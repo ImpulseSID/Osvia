@@ -1,6 +1,8 @@
 # Osvia
 
-![Osvia Background](public/osvia.svg)
+<p align="center">
+  <img src="public/osvia.svg" alt="Osvia Background" width="300">
+</p>
 
 Osvia is a music streaming app built using React, Vite, and TypeScript. It provides an immersive experience with features like a music player, visualizations, and a personalized user interface.
 
@@ -41,6 +43,7 @@ This is the backend for the Osvia Music application. It provides APIs to search 
 ## Setup
 
 1. Install dependencies:
+
    ```
    pip install -r requirements.txt
    ```
