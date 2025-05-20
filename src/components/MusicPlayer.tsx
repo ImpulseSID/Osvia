@@ -29,50 +29,109 @@ const MusicPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
   useEffect(() => {
     if (currentTrack) {
       const fetchStream = async () => {
         const url = await getStreamUrl(currentTrack.videoId);
-        setStreamUrl(url);
+        setStreamUrl(url || ""); // Ensure it's a string, empty if none
       };
       fetchStream();
+    } else {
+      setStreamUrl(""); // Clear when no track
     }
   }, [currentTrack]);
 
+  // Handle play/pause & visualizer
   useEffect(() => {
-    if (!audioRef.current) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!streamUrl) {
+      // If no valid stream URL, pause playback and cancel visualizer
+      audio.pause();
+      cancelAnimationFrame(animationRef.current!);
+      return;
+    }
 
     if (isPlaying) {
-      audioRef.current.play();
-      startVisualizer(audioRef.current);
+      // Play audio only if URL is valid
+      audio.play().catch(() => {
+        /* Ignore play errors (like autoplay blocked) */
+      });
+      startVisualizer(audio);
     } else {
-      audioRef.current.pause();
+      audio.pause();
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     }
   }, [isPlaying, streamUrl]);
 
+  // Volume and mute handling
   useEffect(() => {
     if (!audioRef.current) return;
     audioRef.current.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
 
+  // Cleanup on unmount: close AudioContext and cancel animation
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      sourceRef.current = null;
+      analyserRef.current = null;
+    };
+  }, []);
+
   const startVisualizer = (audio: HTMLAudioElement) => {
     if (!canvasRef.current) return;
-
     const ctx = canvasRef.current.getContext("2d");
     if (!ctx) return;
 
-    const audioContext = new (window.AudioContext ||
-      (window as any).webkitAudioContext)();
-    const analyser = audioContext.createAnalyser();
-    const source = audioContext.createMediaElementSource(audio);
+    // Reuse existing AudioContext, create if needed
+    let audioContext = audioContextRef.current;
+    if (!audioContext) {
+      audioContext = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+      audioContextRef.current = audioContext;
+    }
 
-    source.connect(analyser);
+    // Reuse or create MediaElementSourceNode
+    if (!sourceRef.current) {
+      try {
+        sourceRef.current = audioContext.createMediaElementSource(audio);
+      } catch (e) {
+        // Already connected source to this audio element? just skip
+      }
+    }
+
+    // Create or reuse analyser node
+    let analyser = analyserRef.current;
+    if (!analyser) {
+      analyser = audioContext.createAnalyser();
+      analyserRef.current = analyser;
+      analyser.fftSize = 128;
+    }
+
+    // Connect nodes if not connected
+    try {
+      sourceRef.current?.disconnect();
+    } catch {}
+    try {
+      analyser.disconnect();
+    } catch {}
+
+    sourceRef.current?.connect(analyser);
     analyser.connect(audioContext.destination);
-    analyser.fftSize = 128;
 
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
@@ -85,7 +144,7 @@ const MusicPlayer = () => {
       if (!ctx) return;
 
       animationRef.current = requestAnimationFrame(renderVisualizer);
-      analyser.getByteFrequencyData(dataArray);
+      analyser!.getByteFrequencyData(dataArray);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -151,13 +210,16 @@ const MusicPlayer = () => {
   }
 
   return (
-    <div className="h-24 bg-gray-900 border-t border-gray-800 flex items-center px-4">
-      <audio
-        ref={audioRef}
-        src={streamUrl}
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={nextTrack}
-      />
+    <div className="h-24 bg-gray-900 border-t border-gray-800 flex items-center px-4 relative">
+      {/* Only render audio if streamUrl is non-empty */}
+      {streamUrl ? (
+        <audio
+          ref={audioRef}
+          src={`/api/audio-proxy/${currentTrack.videoId}`} // 👈 updated endpoint
+          onTimeUpdate={handleTimeUpdate}
+          onEnded={nextTrack}
+        />
+      ) : null}
 
       <div className="w-full flex items-center">
         {/* Track Info */}
