@@ -61,41 +61,6 @@ const SearchPage = () => {
     }
   }, [debouncedQuery]);
 
-  // Mock data for development
-  useEffect(() => {
-    if (debouncedQuery && loading) {
-      setTimeout(() => {
-        setSearchResults([
-          {
-            id: "1",
-            title: `${debouncedQuery} - Top Result`,
-            artist: "Popular Artist",
-            thumbnail: "https://i.ytimg.com/vi/4NRXx6U8ABQ/hqdefault.jpg",
-            duration: "3:22",
-            videoId: "4NRXx6U8ABQ",
-          },
-          {
-            id: "2",
-            title: `${debouncedQuery} Remix`,
-            artist: "DJ Something",
-            thumbnail: "https://i.ytimg.com/vi/XXYlFuWEuKI/hqdefault.jpg",
-            duration: "3:35",
-            videoId: "XXYlFuWEuKI",
-          },
-          {
-            id: "3",
-            title: `Best of ${debouncedQuery}`,
-            artist: "Various Artists",
-            thumbnail: "https://i.ytimg.com/vi/kTJczUoc26U/hqdefault.jpg",
-            duration: "2:21",
-            videoId: "kTJczUoc26U",
-          },
-        ]);
-        setLoading(false);
-      }, 1000);
-    }
-  }, [debouncedQuery, loading]);
-
   const handlePlayTrack = (track: Track) => {
     playTrack(track);
   };
