@@ -1,3 +1,4 @@
+
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar.tsx";
 import MusicPlayer from "./MusicPlayer.tsx";
@@ -94,8 +95,13 @@ const Layout = () => {
             />
           )}
         </div>
-        {/* Main content - remove pr-80 class and position the queue sidebar absolutely */}
-        <main className="flex-1 overflow-y-auto p-6 transition-all duration-300">
+        
+        {/* Main content with dynamic width */}
+        <main 
+          className={`flex-1 overflow-y-auto p-6 transition-all duration-300 ${
+            isQueueOpen ? 'pr-80' : ''
+          }`}
+        >
           {/* Mobile sidebar toggle button */}
           <button
             onClick={toggleSidebar}
@@ -107,8 +113,12 @@ const Layout = () => {
           <Outlet />
         </main>
 
-        {/* Right Queue Sidebar - positioned absolutely */}
-        <div className="absolute top-0 right-0 h-full">
+        {/* Right Queue Sidebar - Fixed position with transformed translate */}
+        <div 
+          className={`fixed top-0 right-0 h-full transition-transform duration-300 ${
+            isQueueOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
           <QueueSidebar isOpen={isQueueOpen} onClose={toggleQueueSidebar} />
         </div>
       </div>

@@ -7,9 +7,11 @@ import {
   Volume2,
   VolumeX,
   List,
+  MicVocal,
 } from "lucide-react";
 import { useMusicPlayer } from "../contexts/MusicPlayerContext";
 import { getStreamUrl } from "../services/musicApi";
+import { Link } from "react-router-dom";
 
 interface MusicPlayerProps {
   toggleQueue: () => void;
@@ -24,15 +26,14 @@ const MusicPlayer = ({ toggleQueue, isQueueOpen }: MusicPlayerProps) => {
     resumeTrack,
     nextTrack,
     previousTrack,
+    volume,
+    setVolume,
+    isMuted,
+    setIsMuted,
   } = useMusicPlayer();
 
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(() => {
-    const savedVolume = localStorage.getItem("musicPlayerVolume");
-    return savedVolume ? parseFloat(savedVolume) : 0.7;
-  });
-  const [isMuted, setIsMuted] = useState(false);
   const [streamUrl, setStreamUrl] = useState("");
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -309,6 +310,14 @@ const MusicPlayer = ({ toggleQueue, isQueueOpen }: MusicPlayerProps) => {
 
         {/* Volume Control and Queue Toggle - Right */}
         <div className="flex items-center justify-end">
+          <Link
+            to="/lyrics"
+            className="mr-4 hover:text-white text-gray-400"
+            aria-label="View lyrics"
+          >
+            <MicVocal size={16} strokeWidth={1.75} />
+          </Link>
+
           <button
             onClick={toggleQueue}
             className={`mr-4 hover:text-white ${

@@ -136,7 +136,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({
     console.log("Queue cleared");
   };
 
-// New function to reorder queue items by index
+  // New function to reorder queue items by index
   const reorderQueue = (oldIndex: number, newIndex: number) => {
     setQueue((prevQueue) => {
       const newQueue = [...prevQueue];
@@ -144,7 +144,9 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({
       newQueue.splice(newIndex, 0, movedItem);
       return newQueue;
     });
-    console.log(`Reordered queue: moved item from position ${oldIndex} to ${newIndex}`);
+    console.log(
+      `Reordered queue: moved item from position ${oldIndex} to ${newIndex}`
+    );
   };
 
   return (
