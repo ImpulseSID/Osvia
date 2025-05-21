@@ -40,7 +40,14 @@ def search_music(q: str = Query(..., min_length=1)):
 @app.get("/api/featured")
 def featured_music():
     try:
-        popular_queries = ["Top Hits 2024", "Pop Music", "Rock Classics"]
+        popular_queries = [
+            "Top Hits 2024",
+            "Pop Music",
+            "Bollywood Hits",
+            "Workout Music",
+            "Throwback Songs",
+            "Viral Hits"
+            ]
         results = []
         for query in popular_queries:
             search_results = ytmusic.search(query, filter="songs")[:5]

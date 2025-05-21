@@ -1,4 +1,10 @@
-import React, { createContext, useState, useContext, type ReactNode } from "react";
+import React, {
+  createContext,
+  useState,
+  useContext,
+  type ReactNode,
+  useEffect,
+} from "react";
 
 interface Track {
   id: string;
@@ -20,6 +26,13 @@ interface MusicPlayerContextType {
   previousTrack: () => void;
   addToQueue: (track: Track) => void;
   clearQueue: () => void;
+  playNext: (track: Track) => void;
+  history: Track[];
+  reorderQueue: (oldIndex: number, newIndex: number) => void;
+  volume: number;
+  setVolume: (volume: number) => void;
+  isMuted: boolean;
+  setIsMuted: (muted: boolean) => void;
 }
 
 const MusicPlayerContext = createContext<MusicPlayerContextType | undefined>(
@@ -32,8 +45,30 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [queue, setQueue] = useState<Track[]>([]);
+  const [history, setHistory] = useState<Track[]>([]);
+  const [volume, setVolume] = useState(() => {
+    const savedVolume = localStorage.getItem("musicPlayerVolume");
+    return savedVolume ? parseFloat(savedVolume) : 0.7;
+  });
+  const [isMuted, setIsMuted] = useState(() => {
+    const savedMuted = localStorage.getItem("musicPlayerMuted");
+    return savedMuted ? savedMuted === "true" : false;
+  });
+
+  // Save volume and mute state to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem("musicPlayerVolume", volume.toString());
+  }, [volume]);
+
+  useEffect(() => {
+    localStorage.setItem("musicPlayerMuted", isMuted.toString());
+  }, [isMuted]);
 
   const playTrack = (track: Track) => {
+    // Add current track to history if it exists
+    if (currentTrack) {
+      setHistory((prev) => [currentTrack, ...prev].slice(0, 50)); // Limit history to 50 items
+    }
     setCurrentTrack(track);
     setIsPlaying(true);
     console.log(`Playing track: ${track.title}`);
@@ -52,6 +87,10 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({
   const nextTrack = () => {
     if (queue.length > 0) {
       const nextTrack = queue[0];
+      // Add current track to history if it exists
+      if (currentTrack) {
+        setHistory((prev) => [currentTrack, ...prev].slice(0, 50));
+      }
       setCurrentTrack(nextTrack);
       setQueue(queue.slice(1));
       setIsPlaying(true);
@@ -64,8 +103,22 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const previousTrack = () => {
-    // This would require keeping track of history
-    console.log("Previous track functionality not implemented yet");
+    if (history.length > 0) {
+      const prevTrack = history[0];
+      const newHistory = history.slice(1);
+
+      // Add current track to beginning of queue if it exists
+      if (currentTrack) {
+        setQueue((prev) => [currentTrack, ...prev]);
+      }
+
+      setCurrentTrack(prevTrack);
+      setHistory(newHistory);
+      setIsPlaying(true);
+      console.log(`Playing previous track: ${prevTrack.title}`);
+    } else {
+      console.log("No previous tracks in history");
+    }
   };
 
   const addToQueue = (track: Track) => {
@@ -73,9 +126,25 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({
     console.log(`Added to queue: ${track.title}`);
   };
 
+  const playNext = (track: Track) => {
+    setQueue((prev) => [track, ...prev]);
+    console.log(`Added to play next: ${track.title}`);
+  };
+
   const clearQueue = () => {
     setQueue([]);
     console.log("Queue cleared");
+  };
+
+// New function to reorder queue items by index
+  const reorderQueue = (oldIndex: number, newIndex: number) => {
+    setQueue((prevQueue) => {
+      const newQueue = [...prevQueue];
+      const [movedItem] = newQueue.splice(oldIndex, 1);
+      newQueue.splice(newIndex, 0, movedItem);
+      return newQueue;
+    });
+    console.log(`Reordered queue: moved item from position ${oldIndex} to ${newIndex}`);
   };
 
   return (
@@ -91,6 +160,13 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({
         previousTrack,
         addToQueue,
         clearQueue,
+        playNext,
+        history,
+        reorderQueue,
+        volume,
+        setVolume,
+        isMuted,
+        setIsMuted,
       }}
     >
       {children}

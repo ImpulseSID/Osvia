@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Search } from "lucide-react";
 import { searchMusic } from "../services/musicApi.ts";
 import { useMusicPlayer } from "../contexts/MusicPlayerContext.tsx";
+import SongContextMenu from "../components/SongContextMenu";
 
 interface Track {
   id: string;
@@ -95,32 +96,33 @@ const SearchPage = () => {
           <h2 className="text-xl font-medium mb-4">Search Results</h2>
           <div className="bg-card rounded-lg overflow-hidden">
             {searchResults.map((track, index) => (
-              <div
-                key={track.id}
-                className={`flex items-center p-4 hover:bg-secondary cursor-pointer ${
-                  index !== searchResults.length - 1
-                    ? "border-b border-border"
-                    : ""
-                }`}
-                onClick={() => handlePlayTrack(track)}
-              >
-                <img
-                  src={track.thumbnail}
-                  alt={track.title}
-                  className="h-16 w-16 object-cover rounded mr-4"
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-foreground font-medium truncate">
-                    {track.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm">
-                    {track.artist}
-                  </p>
+              <SongContextMenu key={track.id} track={track}>
+                <div
+                  className={`flex items-center p-4 hover:bg-secondary cursor-pointer ${
+                    index !== searchResults.length - 1
+                      ? "border-b border-border"
+                      : ""
+                  }`}
+                  onClick={() => handlePlayTrack(track)}
+                >
+                  <img
+                    src={track.thumbnail}
+                    alt={track.title}
+                    className="h-16 w-16 object-cover rounded mr-4"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-foreground font-medium truncate">
+                      {track.title}
+                    </h3>
+                    <p className="text-muted-foreground text-sm">
+                      {track.artist}
+                    </p>
+                  </div>
+                  <div className="text-muted-foreground ml-4">
+                    {track.duration}
+                  </div>
                 </div>
-                <div className="text-muted-foreground ml-4">
-                  {track.duration}
-                </div>
-              </div>
+              </SongContextMenu>
             ))}
           </div>
         </div>

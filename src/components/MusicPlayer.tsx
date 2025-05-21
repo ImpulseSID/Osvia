@@ -6,11 +6,17 @@ import {
   SkipForward,
   Volume2,
   VolumeX,
+  List,
 } from "lucide-react";
-import { useMusicPlayer } from "../contexts/MusicPlayerContext.tsx";
-import { getStreamUrl } from "../services/musicApi.ts";
+import { useMusicPlayer } from "../contexts/MusicPlayerContext";
+import { getStreamUrl } from "../services/musicApi";
 
-const MusicPlayer = () => {
+interface MusicPlayerProps {
+  toggleQueue: () => void;
+  isQueueOpen: boolean;
+}
+
+const MusicPlayer = ({ toggleQueue, isQueueOpen }: MusicPlayerProps) => {
   const {
     currentTrack,
     isPlaying,
@@ -22,7 +28,10 @@ const MusicPlayer = () => {
 
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.7);
+  const [volume, setVolume] = useState(() => {
+    const savedVolume = localStorage.getItem("musicPlayerVolume");
+    return savedVolume ? parseFloat(savedVolume) : 0.7;
+  });
   const [isMuted, setIsMuted] = useState(false);
   const [streamUrl, setStreamUrl] = useState("");
 
@@ -36,8 +45,13 @@ const MusicPlayer = () => {
   useEffect(() => {
     if (currentTrack) {
       const fetchStream = async () => {
-        const url = await getStreamUrl(currentTrack.videoId);
-        setStreamUrl(url || ""); // Ensure it's a string, empty if none
+        try {
+          const url = await getStreamUrl(currentTrack.videoId);
+          setStreamUrl(url || ""); // Ensure it's a string, empty if none
+        } catch (error) {
+          console.error("Error fetching stream:", error);
+          setStreamUrl("");
+        }
       };
       fetchStream();
     } else {
@@ -53,7 +67,9 @@ const MusicPlayer = () => {
     if (!streamUrl) {
       // If no valid stream URL, pause playback and cancel visualizer
       audio.pause();
-      cancelAnimationFrame(animationRef.current!);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
       return;
     }
 
@@ -62,7 +78,9 @@ const MusicPlayer = () => {
       audio.play().catch(() => {
         /* Ignore play errors (like autoplay blocked) */
       });
-      startVisualizer(audio);
+      if (audio && canvasRef.current) {
+        startVisualizer(audio); // Pass the audio element to fix the TS error
+      }
     } else {
       audio.pause();
       if (animationRef.current) {
@@ -75,6 +93,11 @@ const MusicPlayer = () => {
   useEffect(() => {
     if (!audioRef.current) return;
     audioRef.current.volume = isMuted ? 0 : volume;
+
+    // Save volume to localStorage when it changes (but not when muted)
+    if (!isMuted) {
+      localStorage.setItem("musicPlayerVolume", volume.toString());
+    }
   }, [volume, isMuted]);
 
   // Cleanup on unmount: close AudioContext and cancel animation
@@ -215,15 +238,15 @@ const MusicPlayer = () => {
       {streamUrl ? (
         <audio
           ref={audioRef}
-          src={`/api/audio-proxy/${currentTrack.videoId}`} // 👈 updated endpoint
+          src={`/api/audio-proxy/${currentTrack.videoId}`}
           onTimeUpdate={handleTimeUpdate}
           onEnded={nextTrack}
         />
       ) : null}
 
-      <div className="w-full flex items-center">
-        {/* Track Info */}
-        <div className="flex items-center w-1/3">
+      <div className="w-full grid grid-cols-3 gap-4">
+        {/* Track Info - Left */}
+        <div className="flex items-center">
           <img
             src={currentTrack.thumbnail || "/default-album.jpg"}
             alt={currentTrack.title}
@@ -239,9 +262,9 @@ const MusicPlayer = () => {
           </div>
         </div>
 
-        {/* Player Controls */}
-        <div className="flex flex-col items-center flex-1">
-          <div className="flex items-center mb-2">
+        {/* Player Controls - Center */}
+        <div className="flex flex-col items-center justify-center">
+          <div className="flex items-center justify-center mb-2">
             <button
               onClick={previousTrack}
               className="text-gray-400 hover:text-white mx-2"
@@ -264,8 +287,8 @@ const MusicPlayer = () => {
             </button>
           </div>
 
-          <div className="flex items-center w-full max-w-2xl">
-            <span className="text-xs text-gray-400 w-10">
+          <div className="flex items-center justify-center w-full">
+            <span className="text-xs text-gray-400 w-10 text-right mr-2">
               {formatTime(progress)}
             </span>
 
@@ -275,17 +298,27 @@ const MusicPlayer = () => {
               max={duration || 0}
               value={progress}
               onChange={handleProgressChange}
-              className="w-full h-1 mx-2 rounded-full accent-blue-500"
+              className="w-full max-w-md h-1 mx-1 rounded-full accent-blue-500"
             />
 
-            <span className="text-xs text-gray-400 w-10">
+            <span className="text-xs text-gray-400 w-10 ml-2">
               {formatTime(duration)}
             </span>
           </div>
         </div>
 
-        {/* Volume Control */}
-        <div className="flex items-center w-1/6 justify-end">
+        {/* Volume Control and Queue Toggle - Right */}
+        <div className="flex items-center justify-end">
+          <button
+            onClick={toggleQueue}
+            className={`mr-4 hover:text-white ${
+              isQueueOpen ? "text-blue-500" : "text-gray-400"
+            }`}
+            aria-label="Toggle queue"
+          >
+            <List size={20} />
+          </button>
+
           <button
             onClick={toggleMute}
             className="text-gray-400 hover:text-white mr-2"
@@ -297,15 +330,20 @@ const MusicPlayer = () => {
             )}
           </button>
 
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={volume}
-            onChange={handleVolumeChange}
-            className="w-24 h-1 rounded-full accent-blue-500"
-          />
+          <div className="flex items-center">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={volume}
+              onChange={handleVolumeChange}
+              className="w-16 h-1 rounded-full accent-blue-500"
+            />
+            <span className="text-xs text-gray-400 ml-2 w-8">
+              {Math.round(volume * 100)}%
+            </span>
+          </div>
         </div>
       </div>
 
